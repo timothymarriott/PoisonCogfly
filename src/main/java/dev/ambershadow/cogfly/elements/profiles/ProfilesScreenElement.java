@@ -1,6 +1,8 @@
 package dev.ambershadow.cogfly.elements.profiles;
 
 import dev.ambershadow.cogfly.Cogfly;
+import dev.ambershadow.cogfly.instance.GameInstance;
+import dev.ambershadow.cogfly.instance.InstanceManager;
 import dev.ambershadow.cogfly.loader.ModData;
 import dev.ambershadow.cogfly.profile.Profile;
 import dev.ambershadow.cogfly.profile.ProfileManager;
@@ -30,9 +32,13 @@ import java.util.function.BiConsumer;
 public class ProfilesScreenElement extends JPanel implements ReloadablePage {
 
     public static final Icon icon = UIManager.getIcon("OptionPane.informationIcon");
-    public static final BiConsumer<String, String> defaultCallback = (name, path) -> {
+    public interface ProfileCreationCallback {
+        void accept(String name, String iconPath, GameInstance instance);
+    }
+
+    public static final ProfileCreationCallback defaultCallback = (name, path, instance) -> {
         ProfileManager.createProfile(name,
-                path.equals("Click here to select a file") ? "" : path);
+                path.equals("Click here to select a file") ? "" : path, instance);
         FrameManager.getOrCreate().getCurrentPage().reload();
     };
     private static boolean refreshQueued = false;
@@ -40,10 +46,10 @@ public class ProfilesScreenElement extends JPanel implements ReloadablePage {
         refreshQueued = true;
     }
 
-    public static void createProfilePrompt(BiConsumer<String, String> consumer, Runnable extra) {
+    public static void createProfilePrompt(ProfileCreationCallback consumer, Runnable extra) {
         JDialog prompt = new JDialog(FrameManager.getOrCreate().frame);
         prompt.setModal(true);
-        prompt.setSize(new Dimension(300, 150));
+        prompt.setSize(new Dimension(340, 200));
         prompt.setResizable(false);
         prompt.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         JPanel holder = new JPanel();
@@ -51,16 +57,25 @@ public class ProfilesScreenElement extends JPanel implements ReloadablePage {
         JTextField nameField = new JTextField("");
         JLabel icon = new JLabel("Icon (optional): ");
         JButton button = new JButton("Click here to select a file");
+        JPanel iconHolder = new JPanel();
+        iconHolder.add(icon);
+        iconHolder.add(button);
+        JComboBox<GameInstance> instanceBox = new JComboBox<>(InstanceManager.getAll().toArray(GameInstance[]::new));
+        instanceBox.setSelectedItem(InstanceManager.getDefault());
+        JPanel instanceHolder = new JPanel();
+        instanceHolder.add(new JLabel("Game instance: "));
+        instanceHolder.add(instanceBox);
         JPanel extraHolder = new JPanel();
-        extraHolder.add(icon);
-        extraHolder.add(button);
+        extraHolder.setLayout(new BoxLayout(extraHolder, BoxLayout.Y_AXIS));
+        extraHolder.add(iconHolder);
+        extraHolder.add(instanceHolder);
 
         JButton create = new JButton("Create");
         create.setEnabled(false);
         create.setPreferredSize(new Dimension(50, 20));
         create.addActionListener(_ -> {
             prompt.dispose();
-            consumer.accept(nameField.getText(), button.getText());
+            consumer.accept(nameField.getText(), button.getText(), (GameInstance) instanceBox.getSelectedItem());
             extra.run();
         });
         nameField.getDocument().addDocumentListener(new NameDocumentListener(nameField, create));
@@ -83,7 +98,7 @@ public class ProfilesScreenElement extends JPanel implements ReloadablePage {
         upperPanel.setPreferredSize(new Dimension(getWidth(), 30));
 
         JButton launchVanilla = new JButton("Launch Vanilla Game");
-        launchVanilla.addActionListener(_ -> GameUtils.launchGameAsync(false, "", Cogfly.settings.gamePath, false));
+        launchVanilla.addActionListener(_ -> GameUtils.launchVanilla(InstanceManager.getDefault()));
 
         JButton importFromFile = new JButton("Import From File");
         importFromFile.addActionListener(_ -> FileUtils.pickFile((path) -> ProfileManager.fromFile(path, (profile, outdated) -> {
@@ -282,7 +297,7 @@ public class ProfilesScreenElement extends JPanel implements ReloadablePage {
             return;
         int maxPerRow = 5;
         List<Profile> profiles = new ArrayList<>();
-        if (Cogfly.settings.baseGameEnabled) {
+        if (Cogfly.settings.baseGameEnabled && ProfileManager.baseGame != null) {
             profiles.add(ProfileManager.baseGame);
         }
         profiles.addAll(ProfileManager.profiles);

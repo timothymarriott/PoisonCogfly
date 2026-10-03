@@ -4,6 +4,7 @@ import dev.ambershadow.cogfly.Cogfly;
 import dev.ambershadow.cogfly.asset.Assets;
 import dev.ambershadow.cogfly.elements.InfoPageElement;
 import dev.ambershadow.cogfly.elements.SettingsDialog;
+import dev.ambershadow.cogfly.elements.instances.InstancesScreenElement;
 import dev.ambershadow.cogfly.elements.profiles.ProfileCardElement;
 import dev.ambershadow.cogfly.elements.profiles.ProfilesScreenElement;
 import dev.ambershadow.cogfly.elements.SelectedPageButtonElement;
@@ -32,7 +33,7 @@ public class FrameManager {
         pagePanel = new JPanel(new CardLayout());
         screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         frame = new JFrame();
-        frame.setTitle("Cogfly - v" + Cogfly.version);
+        frame.setTitle("PoisonCogfly - v" + Cogfly.version);
         frame.setMinimumSize(new Dimension(1200, 750));
         frame.setPreferredSize(new Dimension(1200, 750));
         frame.setIconImage(Assets.icon.getAsImage());
@@ -105,6 +106,7 @@ public class FrameManager {
     public enum CogflyPage {
         INFO("ⓘ Info", new InfoPageElement()),
         PROFILES("▶ Profiles", new ProfilesScreenElement()),
+        INSTANCES("▣ Instances", new InstancesScreenElement()),
         SETTINGS("⚙ Settings", (_) -> {})
         ;
 

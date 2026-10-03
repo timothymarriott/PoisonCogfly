@@ -1,6 +1,8 @@
 package dev.ambershadow.cogfly.elements;
 
 import dev.ambershadow.cogfly.Cogfly;
+import dev.ambershadow.cogfly.instance.GameInstance;
+import dev.ambershadow.cogfly.instance.InstanceManager;
 import dev.ambershadow.cogfly.elements.profiles.ProfileCardElement;
 import dev.ambershadow.cogfly.elements.profiles.ProfilesScreenElement;
 import dev.ambershadow.cogfly.elements.settings.*;
@@ -34,6 +36,7 @@ public class SettingsDialog extends JDialog {
         holder.setLayout(new BoxLayout(holder, BoxLayout.Y_AXIS));
         holder.add(new ThemeListElement(this));
         holder.add(new GamePathElement(this));
+        holder.add(new SteamAccountElement(this));
         holder.add(new ProfileSavePathPanelElement(this));
         holder.add(new ScrollingIncrementElement(this));
         holder.add(new ProfileButtonSizeElement(this));
@@ -41,7 +44,6 @@ public class SettingsDialog extends JDialog {
         holder.add(new BaseGameEnabledElement(this));
         holder.add(new AutoNameSpacingElement(this));
         holder.add(new UseRelativeTimeElement(this));
-        holder.add(new PerProfileGamePathsElement(this));
         holder.add(new InstalledModsOnTopElement(this));
         holder.add(new LaunchWithSteamElement(this));
         holder.add(new AllowLaunchArgsElement(this));
@@ -116,9 +118,11 @@ public class SettingsDialog extends JDialog {
         if (!Objects.equals(queued.profileSavePath, initial.profileSavePath))
             queued.profileSources.add(initial.profileSavePath);
         Cogfly.settings = queued;
+        InstanceManager.ensureExternal(queued.gamePath);
         ProfileManager.loadProfiles();
-        if (queued.baseGameEnabled)
-            GameUtils.downloadBepInEx(Path.of(queued.gamePath));
+        GameInstance base = InstanceManager.getDefault();
+        if (queued.baseGameEnabled && base != null)
+            GameUtils.downloadBepInEx(base.getPath());
         ProfilesScreenElement.queueRefresh();
         FrameManager.getOrCreate().getCurrentPage().reload();
         SwingUtilities.invokeLater(ModPanelElement::redrawAll);

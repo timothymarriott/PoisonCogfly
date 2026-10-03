@@ -6,9 +6,13 @@ import dev.ambershadow.cogfly.Cogfly;
 import dev.ambershadow.cogfly.asset.Assets;
 import dev.ambershadow.cogfly.asset.CogflyAsset;
 import dev.ambershadow.cogfly.elements.SelectedPageButtonElement;
+import dev.ambershadow.cogfly.elements.instances.InstancePicker;
+import dev.ambershadow.cogfly.instance.GameInstance;
+import dev.ambershadow.cogfly.instance.InstanceManager;
 import dev.ambershadow.cogfly.loader.ModData;
 import dev.ambershadow.cogfly.profile.Profile;
 import dev.ambershadow.cogfly.profile.ProfileManager;
+import dev.ambershadow.cogfly.profile.ProfileMeta;
 import dev.ambershadow.cogfly.util.*;
 import dev.ambershadow.cogfly.util.swing.FrameManager;
 import dev.ambershadow.cogfly.util.swing.HoverLerp;
@@ -51,7 +55,10 @@ public class ProfileCardElement extends JPanel {
         ));
 
         JLabel iconLabel = new JLabel(icon, JLabel.CENTER);
-        JLabel nameLabel = new JLabel(profile.getName(), JLabel.CENTER);
+        boolean missing = profile != ProfileManager.baseGame && profile.isInstanceMissing();
+        JLabel nameLabel = new JLabel(missing ? "⚠ " + profile.getName() : profile.getName(), JLabel.CENTER);
+        if (missing)
+            nameLabel.setToolTipText("The game instance for this profile is not installed.");
         add(iconLabel, BorderLayout.CENTER);
         add(nameLabel, BorderLayout.NORTH);
         createButtons();
@@ -180,20 +187,19 @@ public class ProfileCardElement extends JPanel {
             nameField.getDocument().addDocumentListener(new ProfilesScreenElement.NameDocumentListener(nameField, create));
             button.addActionListener(_ -> FileUtils.pickFile((path) -> button.setText(path.toString()), "*", "png", "jpg", "jpeg", "gif"));
 
-            JLabel pth = new JLabel("Path: ");
-            JButton btn = new JButton(profile.getGamePath());
-            btn.addActionListener(_ -> FileUtils.pickFile((path) -> btn.setText(path.getParent().toString()), "Hollow Knight Silksong", "exe", "app", "*"));
+            JLabel pth = new JLabel("Instance: ");
+            JComboBox<GameInstance> instanceBox = new JComboBox<>(InstanceManager.getAll().toArray(GameInstance[]::new));
+            instanceBox.setSelectedItem(profile.getInstance());
 
             create.addActionListener(_ -> {
                 if ((profile.getIconPath() == null || !button.getText().equals(profile.getIconPath().toString()))
                 && !button.getText().equals("Click here to select a file")) {
                     ProfileManager.changeIcon(profile, button.getText());
                 }
-                if (!btn.getText().equals(profile.getGamePath())) {
-                    profile.setGamePath(btn.getText());
-                }
-                if (btn.getText().equals(Cogfly.settings.gamePath)) {
-                    profile.resetGamePath();
+                GameInstance chosen = (GameInstance) instanceBox.getSelectedItem();
+                if (chosen != null && !chosen.getId().equals(profile.getInstanceId())
+                        && InstancePicker.confirmVersionChange(profile, chosen)) {
+                    profile.setInstance(chosen);
                 }
                 if (!nameField.getText().equals(profile.getName())) {
                     try {
@@ -228,13 +234,11 @@ public class ProfileCardElement extends JPanel {
             main.add(holder);
             main.add(Box.createVerticalStrut(8));
             main.add(extraHolder);
-            if (Cogfly.settings.profileSpecificPaths) {
-                JPanel holder3 = new JPanel(new BorderLayout(5, 5));
-                holder3.add(pth, BorderLayout.WEST);
-                holder3.add(btn, BorderLayout.CENTER);
-                main.add(Box.createVerticalStrut(8));
-                main.add(holder3);
-            }
+            JPanel holder3 = new JPanel(new BorderLayout(5, 5));
+            holder3.add(pth, BorderLayout.WEST);
+            holder3.add(instanceBox, BorderLayout.CENTER);
+            main.add(Box.createVerticalStrut(8));
+            main.add(holder3);
 
             JPanel content = new JPanel(new BorderLayout());
             content.add(main, BorderLayout.CENTER);
@@ -247,7 +251,7 @@ public class ProfileCardElement extends JPanel {
         });
 
         copy = new JButton();
-        copy.addActionListener(_ -> ProfilesScreenElement.createProfilePrompt((name, icn) -> Cogfly.runAsync(() -> {
+        copy.addActionListener(_ -> ProfilesScreenElement.createProfilePrompt((name, icn, instance) -> Cogfly.runAsync(() -> {
             try (Stream<Path> files = Files.walk(profile.getPath())) {
                 Files.createDirectory(Path.of(Cogfly.settings.profileSavePath).resolve(name));
                 Path source = Paths.get(icn);
@@ -265,6 +269,12 @@ public class ProfileCardElement extends JPanel {
                     }
 
                 }
+                ProfileMeta meta = profile.toMeta();
+                if (instance != null) {
+                    meta.instanceId = instance.getId();
+                    meta.gameVersion = instance.getVersion();
+                }
+                meta.write(Path.of(Cogfly.settings.profileSavePath).resolve(name).resolve("cogfly_data.json"));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -291,7 +301,7 @@ public class ProfileCardElement extends JPanel {
                 ProfilesScreenElement.queueRefresh();
             }
         });
-        if (profile.getPath().equals(Paths.get(Cogfly.settings.gamePath))) {
+        if (profile == ProfileManager.baseGame) {
             remove.setEnabled(false);
             edit.setEnabled(false);
             copy.setEnabled(false);

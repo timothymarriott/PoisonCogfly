@@ -73,14 +73,15 @@ public class Settings {
     public String gamePath = findDefaultPath();
     public String profileSavePath = Cogfly.roamingDataPath.resolve("profiles").toString();
     public final Set<String> profileSources = new HashSet<>();
+    public String steamUsername = "";
     public boolean baseGameEnabled = false;
     public boolean modNameSpaces = true;
     public int scrollingIncrement = 16;
     public boolean useRelativeTime = false;
-    public boolean profileSpecificPaths = false;
     public boolean showInstalledModsOnTop = false;
     public boolean launchWithSteam = false;
     public boolean dontShowPatreonAgain = false;
+    public boolean legacyMigrationHandled = false;
     public boolean finishedSteamPopup = false;
     public boolean acceptedSteamArgs = false;
     public int profileButtonSize = 15;

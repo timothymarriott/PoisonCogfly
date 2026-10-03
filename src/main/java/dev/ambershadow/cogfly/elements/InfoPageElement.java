@@ -2,6 +2,7 @@ package dev.ambershadow.cogfly.elements;
 
 import com.kitfox.svg.app.beans.SVGIcon;
 import dev.ambershadow.cogfly.Cogfly;
+import dev.ambershadow.cogfly.instance.InstanceManager;
 import dev.ambershadow.cogfly.asset.Assets;
 import dev.ambershadow.cogfly.elements.profiles.ProfileCardElement;
 import dev.ambershadow.cogfly.util.FileUtils;
@@ -24,7 +25,7 @@ public class InfoPageElement extends JPanel implements ReloadablePage {
         Random random = new Random();
         int a = random.nextInt(0, 100);
         JLabel image;
-        if (a == 1 && Cogfly.settings.profileSpecificPaths){
+        if (a == 1){
             if (random.nextBoolean()){
                 image = new JLabel(Assets.reese1.getAsScaledIcon(1 / 10f));
             }
@@ -56,7 +57,7 @@ public class InfoPageElement extends JPanel implements ReloadablePage {
         };
         String[] links = {
                 "https://discord.gg/VDsg3HmWuB",
-                "https://github.com/Nix-main/Cogfly",
+                "https://github.com/timothymarriott/PoisonCogfly",
                 "https://patreon.com/c/AmberShadowo"
         };
         Dimension size = new Dimension(150, 125);
@@ -111,7 +112,7 @@ public class InfoPageElement extends JPanel implements ReloadablePage {
         launchVanilla.setHorizontalAlignment(SwingConstants.CENTER);
         launchVanilla.setPreferredSize(dim);
         launchVanilla.setMaximumSize(max);
-        launchVanilla.addActionListener(_ -> GameUtils.launchGameAsync(false, "", Cogfly.settings.gamePath, false));
+        launchVanilla.addActionListener(_ -> GameUtils.launchVanilla(InstanceManager.getDefault()));
 
         JPanel buttons = new JPanel();
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));

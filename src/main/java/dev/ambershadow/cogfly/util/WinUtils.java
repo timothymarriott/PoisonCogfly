@@ -51,7 +51,7 @@ public class WinUtils {
                                     .toURI())
                     .getParent()
                     .getParent()
-                    .resolve("Cogfly.exe");
+                    .resolve("PoisonCogfly.exe");
             if (Advapi32Util.registryValueExists(
                     WinReg.HKEY_CURRENT_USER,
                     commandKey,

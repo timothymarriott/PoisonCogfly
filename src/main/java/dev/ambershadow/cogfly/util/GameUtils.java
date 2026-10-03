@@ -2,6 +2,8 @@ package dev.ambershadow.cogfly.util;
 
 import dev.ambershadow.cogfly.Cogfly;
 import dev.ambershadow.cogfly.asset.Assets;
+import dev.ambershadow.cogfly.instance.GameInstance;
+import dev.ambershadow.cogfly.instance.InstanceManager;
 import dev.ambershadow.cogfly.profile.Profile;
 import dev.ambershadow.cogfly.util.swing.FrameManager;
 
@@ -111,12 +113,13 @@ public class GameUtils {
             downloadPack(latestPackVer);
         } catch (IOException e) {
             Cogfly.logger.error("Failed to download BepInExPack.", e);
-            JOptionPane.showOptionDialog(null, "Cogfly failed to install the BepInEx pack. The app must now exit.", "Pack install failed!", JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, new String[]{"Close"}, "Close");
+            JOptionPane.showOptionDialog(null, "PoisonCogfly failed to install the BepInEx pack. The app must now exit.", "Pack install failed!", JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, new String[]{"Close"}, "Close");
             System.exit(100);
             return;
         }
-        if (Cogfly.settings.baseGameEnabled)
-            downloadBepInEx(Path.of(Cogfly.settings.gamePath));
+        GameInstance base = InstanceManager.getDefault();
+        if (Cogfly.settings.baseGameEnabled && base != null)
+            downloadBepInEx(base.getPath());
         queuedPaths.forEach(GameUtils::downloadBepInEx);
         queuedPaths = null;
     }
@@ -188,6 +191,14 @@ public class GameUtils {
             JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame, "Downloads are currently in-progress for this profile. Please wait for them to complete before launching.", "Downloads in progress!", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        if (profile.isInstanceMissing()) {
+            String wanted = profile.getGameVersion() != null ? " (version " + profile.getGameVersion() + ")" : "";
+            JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame,
+                    "The game instance for this profile" + wanted + " is not installed.\n"
+                            + "Choose another instance for the profile, or install that version from the Instances page.",
+                    "Instance missing!", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         if (!profile.getGamePath().equals(Cogfly.settings.gamePath)){
             int launch = JOptionPane.showOptionDialog(FrameManager.getOrCreate().frame,
                     "This profile has a custom game path. How would you like to launch it?",
@@ -204,6 +215,16 @@ public class GameUtils {
                 return;
         }
         launchGameAsync(true, profile.getBepInExPath().toString(), profile.getGamePath(), shortcut);
+    }
+
+    public static void launchVanilla(GameInstance instance) {
+        if (instance == null || !instance.isAvailable()) {
+            JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame,
+                    "No game instance is available to launch. Set a game path in Settings or add an instance on the Instances page.",
+                    "No instance", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        launchGameAsync(false, "", instance.getPath().toString(), false);
     }
 
     public static void launchGameAsync(boolean enabled, String path, String gamePath, boolean shortcut) {
@@ -280,7 +301,7 @@ public class GameUtils {
                 ProcessBuilder builder = new ProcessBuilder();
                 builder.directory(game.toFile());
                 if (Cogfly.isProton(game)){
-                    JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame, "Cogfly can't launch proton standalone. Please use \"Launch with steam\".");
+                    JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame, "PoisonCogfly can't launch proton standalone. Please use \"Launch with steam\".");
                     return;
                 }
                 cmds.addAll(args);

@@ -1,13 +1,11 @@
 package dev.ambershadow.cogfly.profile;
 
-import com.google.gson.stream.JsonWriter;
-import dev.ambershadow.cogfly.Cogfly;
+import dev.ambershadow.cogfly.instance.GameInstance;
+import dev.ambershadow.cogfly.instance.InstanceManager;
 import dev.ambershadow.cogfly.loader.ModData;
 import dev.ambershadow.cogfly.loader.ModFetcher;
 
 import javax.swing.*;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,7 +19,9 @@ public class Profile {
     private Set<String> disabledMods = new HashSet<>();
     private final Path path;
     private final String name;
-    private String gamePath = Cogfly.settings.gamePath;
+    private String instanceId;
+    private String gameVersion;
+    private boolean persistMeta = true;
     private Icon icon;
     private final Path iconPath;
     public Profile(String name, Path path) {
@@ -82,28 +82,63 @@ public class Profile {
     public void setIcon(Icon icon) {
         this.icon = icon;
     }
-    public String getGamePath() {
-        return Cogfly.settings.profileSpecificPaths ? gamePath : Cogfly.settings.gamePath;
+    public String getInstanceId() {
+        return instanceId;
     }
 
-    public void resetGamePath() {
-        try {
-            Files.deleteIfExists(getPath().resolve("cogfly_data.json"));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        gamePath = Cogfly.settings.gamePath;
+    /** The game version this profile was last bound to; survives its instance being deleted. */
+    public String getGameVersion() {
+        return gameVersion;
     }
-    public void setGamePath(String gamePath) {
-        this.gamePath = gamePath;
-        try(JsonWriter writer = new JsonWriter(Files.newBufferedWriter(getPath().resolve("cogfly_data.json")))) {
-            writer.beginObject();
-            writer.name("gamePath");
-            writer.value(gamePath);
-            writer.endObject();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+    public GameInstance getInstance() {
+        return InstanceManager.getById(instanceId);
+    }
+
+    /** Game folder of this profile's instance, or null when the instance is missing or gone from disk. */
+    public String getGamePath() {
+        GameInstance instance = getInstance();
+        return instance != null && instance.isAvailable() ? instance.getPath().toString() : null;
+    }
+
+    public boolean isInstanceMissing() {
+        return getGamePath() == null;
+    }
+
+    public void setInstance(GameInstance instance) {
+        bind(instance);
+        saveMeta();
+    }
+
+    /** Binds without writing to disk; the base game profile lives in the game folder itself. */
+    void bind(GameInstance instance) {
+        instanceId = instance != null ? instance.getId() : null;
+        if (instance != null && instance.getVersion() != null)
+            gameVersion = instance.getVersion();
+    }
+
+    void restore(GameInstance instance, ProfileMeta meta) {
+        bind(instance);
+        if (instance == null)
+            instanceId = meta.instanceId;
+        if (gameVersion == null)
+            gameVersion = meta.gameVersion;
+    }
+
+    void disablePersistence() {
+        persistMeta = false;
+    }
+
+    public ProfileMeta toMeta() {
+        ProfileMeta meta = new ProfileMeta();
+        meta.instanceId = instanceId;
+        meta.gameVersion = gameVersion;
+        return meta;
+    }
+
+    public void saveMeta() {
+        if (persistMeta)
+            toMeta().write(getPath().resolve("cogfly_data.json"));
     }
 
     public void refreshMods() {

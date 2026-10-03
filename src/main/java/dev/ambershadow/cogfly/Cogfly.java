@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import dev.ambershadow.cogfly.asset.Assets;
 import dev.ambershadow.cogfly.elements.ModPanelElement;
 import dev.ambershadow.cogfly.elements.profiles.ProfilesScreenElement;
+import dev.ambershadow.cogfly.instance.InstanceManager;
 import dev.ambershadow.cogfly.loader.ModData;
 import dev.ambershadow.cogfly.loader.ModFetcher;
 import dev.ambershadow.cogfly.profile.Profile;
@@ -45,6 +46,7 @@ public class Cogfly {
             ? Cogfly.class.getPackage().getImplementationVersion()
             : "";
 
+    private static final boolean UPDATE_CHECK_ENABLED = false;
     private static String latestVersion = version;
 
     public static URL getResource(String path) {
@@ -77,9 +79,9 @@ public class Cogfly {
     public static @SuppressWarnings("unused") void main(String[] args) throws IOException {
         LocaleManager.setLocale(Locale.getDefault());
         AppDirs dirs = AppDirsFactory.getInstance();
-        localDataPath = Paths.get(dirs.getUserDataDir("Cogfly", null, ""));
-        roamingDataPath = Paths.get(dirs.getUserDataDir("Cogfly", null, "", true));
-        tempDir = Paths.get(System.getProperty("java.io.tmpdir"), "cogfly-downloads");
+        localDataPath = Paths.get(dirs.getUserDataDir("PoisonCogfly", null, ""));
+        roamingDataPath = Paths.get(dirs.getUserDataDir("PoisonCogfly", null, "", true));
+        tempDir = Paths.get(System.getProperty("java.io.tmpdir"), "poisoncogfly-downloads");
         System.setProperty("app.log.dir", localDataPath.resolve("logs").toString());
 
         logger = LoggerFactory.getLogger(Cogfly.class);
@@ -107,6 +109,8 @@ public class Cogfly {
             Files.createFile(dataJson);
         }
         settings = Settings.load(dataJson);
+        if (dev.ambershadow.cogfly.util.LegacyMigration.offerIfNeeded())
+            settings = Settings.load(dataJson);
         extractIcons();
         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.APP_OPEN_URI)) {
             Desktop.getDesktop().setOpenURIHandler(event -> {
@@ -185,6 +189,7 @@ public class Cogfly {
             ));
             logger.info("Loaded and parsed mods in {} milliseconds", (System.currentTimeMillis() - start));
             start = System.currentTimeMillis();
+            InstanceManager.load();
             ProfileManager.loadProfiles();
             logger.info("Loaded profiles in {} milliseconds", (System.currentTimeMillis() - start));
             Cogfly.createdProfiles = true;
@@ -232,6 +237,7 @@ public class Cogfly {
                 }
             }
             if (profile[0] != null) {
+                InstanceManager.load();
                 Profile f = ProfileManager.loadProfile(Paths.get(profile[0]));
                 if (Files.exists(localDataPath.resolve("doorstop")))
                     GameUtils.doorstop = localDataPath.resolve("doorstop");
@@ -388,6 +394,9 @@ public class Cogfly {
                     prompt);
             prompt.pack();
             prompt.setVisible(true);
+            InstanceManager.ensureExternal(settings.gamePath);
+            ProfileManager.loadProfiles();
+            ProfilesScreenElement.queueRefresh();
         }
 
 
@@ -411,20 +420,24 @@ public class Cogfly {
             }
         }
 
-        try (HttpClient client = HttpClient.newHttpClient()) {
-            HttpRequest request = HttpRequest.newBuilder()
-                .GET()
-                .uri(URI.create("https://ambershadow.dev/api/cogfly/latest/"))
-                .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            JsonObject obj = JsonParser.parseString(response.body()).getAsJsonObject();
-            windowsSha256 = obj.get("windowsSha256").getAsString();
-            macSha256 = obj.get("macSha256").getAsString();
-            latestVersion = obj.get("version").getAsString();
-        } catch (IOException | InterruptedException e) {
-            windowsSha256 = "";
-            macSha256 = "";
-            latestVersion = version;
+        // Update checking is disabled in this fork: the upstream endpoint would offer upstream's builds.
+        // Flip this (and point the URLs below at your own releases) to re-enable it.
+        if (UPDATE_CHECK_ENABLED) {
+            try (HttpClient client = HttpClient.newHttpClient()) {
+                HttpRequest request = HttpRequest.newBuilder()
+                    .GET()
+                    .uri(URI.create("https://ambershadow.dev/api/cogfly/latest/"))
+                    .build();
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                JsonObject obj = JsonParser.parseString(response.body()).getAsJsonObject();
+                windowsSha256 = obj.get("windowsSha256").getAsString();
+                macSha256 = obj.get("macSha256").getAsString();
+                latestVersion = obj.get("version").getAsString();
+            } catch (IOException | InterruptedException e) {
+                windowsSha256 = "";
+                macSha256 = "";
+                latestVersion = version;
+            }
         }
         if (!version.equals(latestVersion)) {
             int update = JOptionPane.showOptionDialog(
@@ -448,7 +461,7 @@ public class Cogfly {
                         if (System.getenv("APPIMAGE") != null)
                             autoUpdateAppImage();
                         else
-                            JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame, "Cogfly is managed by your system's package manager (apt/dnf/yum). Please run an upgrade through it to update Cogfly.", "No auto-update available.", JOptionPane.INFORMATION_MESSAGE);
+                            JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame, "PoisonCogfly is managed by your system's package manager (apt/dnf/yum). Please run an upgrade through it to update PoisonCogfly.", "No auto-update available.", JOptionPane.INFORMATION_MESSAGE);
                     }
                     case MAC -> autoUpdateMac();
                 }
@@ -462,24 +475,6 @@ public class Cogfly {
             settings.dontShowPatreonAgain = false;
             settings.save();
         }
-        if (!settings.dontShowPatreonAgain) {
-            int val = JOptionPane.showOptionDialog(
-                    FrameManager.getOrCreate().frame,
-                    "I have a Patreon! It's fairly affordable, so if you want to support me and access bonus content coming soon, please do so at https://www.patreon/com/c/AmberShadowo",
-                    "Support me?",
-                    JOptionPane.YES_NO_CANCEL_OPTION,
-                    JOptionPane.INFORMATION_MESSAGE,
-                    Assets.icon.getAsIcon(),
-                    new Object[]{"Close & Don't Show Again", "Open My Patreon", LocaleManager.buttonClose.get()},
-                    "Open My Patreon");
-            if (val == JOptionPane.YES_OPTION) {
-                settings.dontShowPatreonAgain = true;
-                settings.save();
-            }
-            else if (val == JOptionPane.NO_OPTION)
-                FileUtils.openURI(URI.create("https://www.patreon.com/c/AmberShadowo?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink"));
-        }
-
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpRequest request = HttpRequest.newBuilder()
                     .GET()

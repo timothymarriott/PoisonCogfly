@@ -22,6 +22,11 @@ jobs:
           java-version: 22
           architecture: x64
 
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
       - name: Make Gradle wrapper executable
         if: runner.os != 'Windows'
         run: chmod +x ./gradlew
@@ -46,11 +51,11 @@ jobs:
         run: |
           jpackage \
               --input build/libs \
-              --main-jar Cogfly-${{ env.ver }}.jar \
+              --main-jar PoisonCogfly-${{ env.ver }}.jar \
               --main-class dev.ambershadow.cogfly.Cogfly \
-              --name "Cogfly" \
+              --name "PoisonCogfly" \
               --type dmg \
-              --vendor "Ambershadow" \
+              --vendor "Timothy Marriott" \
               --icon ./resources/icons/icon.icns \
               --app-version ${{ env.ver }} \
               --dest output/${{ runner.os }} \
@@ -62,11 +67,11 @@ jobs:
         run: |
           jpackage `
             --input build/libs `
-            --main-jar Cogfly-${{ env.ver }}.jar `
+            --main-jar PoisonCogfly-${{ env.ver }}.jar `
             --main-class dev.ambershadow.cogfly.Cogfly `
-            --name Cogfly `
+            --name PoisonCogfly `
             --type app-image `
-            --vendor "Ambershadow" `
+            --vendor "Timothy Marriott" `
             --icon ./resources/icons/icon.ico `
             --app-version ${{ env.ver }} `
             --dest output/${{ runner.os }} `
@@ -74,21 +79,18 @@ jobs:
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/Dcgver=${{ env.ver }}" Cogfly.iss
           Remove-Item -Recurse -Force "output\Windows"
           New-Item -ItemType Directory -Force -Path "output\Windows"
-          Copy-Item -Recurse -Force "Output\Cogfly-${{ env.ver }}-installer.exe" "output\Windows\"
+          Copy-Item -Recurse -Force "Output\PoisonCogfly-${{ env.ver }}-installer.exe" "output\Windows\"
 
       - name: Build DEB
         if: runner.os == 'Linux'
         run: |
-          mkdir build/libs/repo
-          wget -P build/libs/repo https://apt.ambershadow.dev/cogfly.sources
-          wget -P build/libs/repo https://apt.ambershadow.dev/repo.gpg 
           jpackage \
             --input build/libs \
-            --main-jar Cogfly-${{ env.ver }}.jar \
+            --main-jar PoisonCogfly-${{ env.ver }}.jar \
             --main-class dev.ambershadow.cogfly.Cogfly \
-            --name Cogfly \
+            --name PoisonCogfly \
             --type deb \
-            --vendor "Ambershadow" \
+            --vendor "Timothy Marriott" \
             --icon ./resources/icons/icon.png \
             --app-version ${{ env.ver }} \
             --dest output/${{ runner.os }} \
@@ -99,41 +101,19 @@ jobs:
       - name: Build RPM
         if: runner.os == 'Linux'
         run: |
-          rm -rf build/libs/repo
-          mkdir build/libs/repo
-          wget -P build/libs/repo https://rpm.ambershadow.dev/cogfly.repo
-          
-          args=(
-            --input build/libs
-            --main-jar Cogfly-${{ env.ver }}.jar
-            --main-class dev.ambershadow.cogfly.Cogfly
-            --name Cogfly
-            --type rpm
-            --vendor "Ambershadow"
-            --icon ./resources/icons/icon.png
-            --app-version ${{ env.ver }}
-            --dest output/${{ runner.os }}
-            --resource-dir resources/linux
-            --verbose
+          jpackage \
+            --input build/libs \
+            --main-jar PoisonCogfly-${{ env.ver }}.jar \
+            --main-class dev.ambershadow.cogfly.Cogfly \
+            --name PoisonCogfly \
+            --type rpm \
+            --vendor "Timothy Marriott" \
+            --icon ./resources/icons/icon.png \
+            --app-version ${{ env.ver }} \
+            --dest output/${{ runner.os }} \
+            --resource-dir resources/linux \
+            --verbose \
             --linux-shortcut
-          )
-          
-          jpackage "${args[@]}" --temp temp
-          awk '
-            /^%post$/ {
-            print
-            print "install -Dm644 /opt/cogfly/lib/app/repo/cogfly.repo /etc/yum.repos.d/cogfly.repo"
-            next
-          }
-            /^%preun/ {
-            print
-            print "rm -f /etc/yum.repos.d/cogfly.repo"
-            next
-          }
-            { print }
-          ' temp/SPECS/cogfly.spec > resources/linux/cogfly.spec
-          cat resources/linux/cogfly.spec
-          jpackage "${args[@]}"
 
       - name: Build APPIMAGE
         if: runner.os == 'Linux'
@@ -142,36 +122,36 @@ jobs:
           mkdir -p output/${{ runner.os }}
           jpackage \
             --input build/libs \
-            --main-jar Cogfly-${{ env.ver }}.jar \
+            --main-jar PoisonCogfly-${{ env.ver }}.jar \
             --main-class dev.ambershadow.cogfly.Cogfly \
-            --name Cogfly \
+            --name PoisonCogfly \
             --type app-image \
-            --vendor "Ambershadow" \
+            --vendor "Timothy Marriott" \
             --icon ./resources/icons/icon.png \
             --app-version ${{ env.ver }} \
             --dest output/appimage \
             --verbose 
-          cp ./resources/icons/icon.png output/appimage/Cogfly/
-          cp ./resources/linux/Cogfly_appimage.desktop output/appimage/Cogfly/Cogfly.desktop
-          cat > output/appimage/Cogfly/AppRun << 'EOF'
+          cp ./resources/icons/icon.png output/appimage/PoisonCogfly/
+          cp ./resources/linux/PoisonCogfly_appimage.desktop output/appimage/PoisonCogfly/PoisonCogfly.desktop
+          cat > output/appimage/PoisonCogfly/AppRun << 'EOF'
           #!/bin/sh
           export _JAVA_AWT_WM_NONREPARENTING=1
           HERE="$(dirname "$(readlink -f "$0")")"
-          exec "$HERE/bin/Cogfly" "$@"
+          exec "$HERE/bin/PoisonCogfly" "$@"
           EOF
-          chmod +x output/appimage/Cogfly/AppRun
+          chmod +x output/appimage/PoisonCogfly/AppRun
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
-          ls -l output/appimage/Cogfly
+          ls -l output/appimage/PoisonCogfly
           export APPIMAGE_EXTRACT_AND_RUN=1
           ./appimagetool \
-            -u "gh-releases-zsync|${{ github.repository_owner }}|Cogfly|latest|Cogfly-*.AppImage" \
-            output/appimage/Cogfly output/${{ runner.os }}/Cogfly-${{ env.ver }}.AppImage
-          mv ./Cogfly-${{ env.ver }}.AppImage.zsync output/${{ runner.os }}/ 2>/dev/null || true
+            -u "gh-releases-zsync|${{ github.repository_owner }}|PoisonCogfly|latest|PoisonCogfly-*.AppImage" \
+            output/appimage/PoisonCogfly output/${{ runner.os }}/PoisonCogfly-${{ env.ver }}.AppImage
+          mv ./PoisonCogfly-${{ env.ver }}.AppImage.zsync output/${{ runner.os }}/ 2>/dev/null || true
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Cogfly-${{ runner.os }}
+          name: PoisonCogfly-${{ runner.os }}
           path: output/${{ runner.os }}
           retention-days: 14

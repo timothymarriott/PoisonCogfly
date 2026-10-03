@@ -25,6 +25,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.5.37")
     implementation("com.formdev:svgSalamander:1.1.4")
     implementation("org.yaml:snakeyaml:2.2")
+    implementation("com.google.zxing:core:3.5.3")
 }
 
 val compileWinFolderPicker by tasks.register("compileWinFolderPicker") {
@@ -79,17 +80,53 @@ val compileTinyFileDialogs = tasks.register("compileTinyFileDialogs") {
         }
     }
 }
+val publishDownloader = tasks.register("publishDownloader") {
+    val projectDir = file("tools/CogflyDownloader")
+    val outDir = layout.buildDirectory.dir("native/downloader")
+    inputs.property("rid", findProperty("downloaderRid")?.toString() ?: "")
+    inputs.files(fileTree("tools") { exclude("**/bin/**", "**/obj/**") })
+    outputs.dir(outDir)
+    doLast {
+        val os = System.getProperty("os.name").lowercase()
+        val arch = if (System.getProperty("os.arch").lowercase().let { it == "aarch64" || it == "arm64" }) "arm64" else "x64"
+        // -PdownloaderRid=win-x64 cross-builds the downloader for another OS (e.g. building a Windows jar from WSL)
+        val rid = findProperty("downloaderRid")?.toString() ?: when {
+            os.contains("windows") -> "win-$arch"
+            os.contains("mac") -> "osx-$arch"
+            else -> "linux-$arch"
+        }
+        try {
+            delete(outDir)
+            providers.exec {
+                commandLine(
+                    "dotnet", "publish", projectDir.absolutePath,
+                    "-c", "Release", "-r", rid, "--self-contained",
+                    "-p:PublishSingleFile=true",
+                    "-p:EnableCompressionInSingleFile=true",
+                    "-p:DebugType=None",
+                    "-o", outDir.get().asFile.absolutePath
+                )
+            }.result.get()
+        } catch (e: Exception) {
+            // Without the .NET SDK the app still builds, it just can't download game versions.
+            if (System.getenv("CI") != null)
+                throw e
+            logger.warn("Skipping CogflyDownloader: ${e.message}")
+        }
+    }
+}
+
 tasks.register("ver") {
     doLast {
         println(project.version)
     }
 }
 tasks.processResources {
-    dependsOn(compileWinFolderPicker, compileTinyFileDialogs)
+    dependsOn(compileWinFolderPicker, compileTinyFileDialogs, publishDownloader)
 }
 
 tasks.shadowJar {
-    archiveBaseName.set("Cogfly")
+    archiveBaseName.set("PoisonCogfly")
     archiveClassifier.set("")
     archiveVersion.set(version.toString())
     manifest {

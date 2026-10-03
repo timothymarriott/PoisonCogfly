@@ -44,3 +44,7 @@ bin/
 
 
 /.idea/
+
+### Local checkout of the depot downloader research project (own repo) ###
+/SilksongDownloader/
+/tools/**/obj/

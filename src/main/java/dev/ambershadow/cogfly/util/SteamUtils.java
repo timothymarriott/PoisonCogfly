@@ -51,7 +51,7 @@ public class SteamUtils {
             return true;
         if (!Cogfly.settings.finishedSteamPopup) {
             int opt = JOptionPane.showOptionDialog(FrameManager.getOrCreate().frame,
-                    "Cogfly is trying to add " + "\"" + args + "\" to your steam launch arguments, this is necessary for the Launch with Steam setting to work on Mac and Linux. This WILL overwrite your existing launch arguments, but only once. You will not be shown this popup again, but can always modify this value in your settings.",
+                    "PoisonCogfly is trying to add " + "\"" + args + "\" to your steam launch arguments, this is necessary for the Launch with Steam setting to work on Mac and Linux. This WILL overwrite your existing launch arguments, but only once. You will not be shown this popup again, but can always modify this value in your settings.",
                     "Steam Launch Args",
                     JOptionPane.YES_NO_CANCEL_OPTION,
                     JOptionPane.INFORMATION_MESSAGE,

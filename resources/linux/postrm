@@ -20,9 +20,7 @@ set -e
 
 case "$1" in
     purge)
-        rm -f /usr/share/keyrings/cogfly.gpg
-        rm -f /etc/apt/sources.list.d/cogfly.sources
-        apt-get update || true
+        :
     ;;
     remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;

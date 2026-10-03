@@ -1,20 +1,20 @@
-#define app "Cogfly"
-#define link "https://patreon.com/c/AmberShadowo"
-#define exe "Cogfly.exe"
+#define app "PoisonCogfly"
+#define link "https://github.com/timothymarriott/PoisonCogfly"
+#define exe "PoisonCogfly.exe"
 
 [Setup]
-AppId={{CFE1E633-FC42-4E59-A82F-87A66DA6B009}
+AppId={{7B1F4E52-3A9C-4D86-9E0B-5C2D8A61F3E7}
 AppName={#app}
 AppVerName={#app}
 AppVersion={#cgver}
 UsePreviousAppDir=yes
 DisableDirPage=auto
 SetupIconFile=resources\icons\icon.ico
-AppPublisher="Ambershadowo"
+AppPublisher="Timothy Marriott"
 AppPublisherURL={#link}
 AppSupportURL={#link}
 AppUpdatesURL={#link}
-OutputBaseFilename=Cogfly-{#cgver}-installer
+OutputBaseFilename=PoisonCogfly-{#cgver}-installer
 DefaultDirName={autopf}\{#app}
 UninstallDisplayIcon={app}\{#exe}
 ArchitecturesAllowed=x64compatible
@@ -36,7 +36,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "output\Windows\Cogfly\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "output\Windows\PoisonCogfly\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "resources\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
@@ -44,12 +44,12 @@ Name: "{autoprograms}\{#app}"; Filename: "{app}\{#exe}"
 Name: "{autodesktop}\{#app}"; Filename: "{app}\{#exe}"; Tasks: desktopicon
 
 [Registry]
-Root: HKCU; Subkey: "Software\Classes\cogfly"; ValueType: string; ValueName: ""; ValueData: "URL:Cogfly Protocol"; Flags: uninsdeletekey; Check: not IsAdminInstall
-Root: HKLM; Subkey: "Software\Classes\cogfly"; ValueType: string; ValueName: ""; ValueData: "URL:Cogfly Protocol"; Flags: uninsdeletekey; Check: IsAdminInstall
+Root: HKCU; Subkey: "Software\Classes\cogfly"; ValueType: string; ValueName: ""; ValueData: "URL:PoisonCogfly Protocol"; Flags: uninsdeletekey; Check: not IsAdminInstall
+Root: HKLM; Subkey: "Software\Classes\cogfly"; ValueType: string; ValueName: ""; ValueData: "URL:PoisonCogfly Protocol"; Flags: uninsdeletekey; Check: IsAdminInstall
 Root: HKCU; Subkey: "Software\Classes\cogfly"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Check: not IsAdminInstall
 Root: HKLM; Subkey: "Software\Classes\cogfly"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Check: IsAdminInstall
-Root: HKCU; Subkey: "Software\Classes\cogfly\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Cogfly.exe"" ""%1"""; Check: not IsAdminInstall
-Root: HKLM; Subkey: "Software\Classes\cogfly\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Cogfly.exe"" ""%1"""; Check: IsAdminInstall
+Root: HKCU; Subkey: "Software\Classes\cogfly\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\PoisonCogfly.exe"" ""%1"""; Check: not IsAdminInstall
+Root: HKLM; Subkey: "Software\Classes\cogfly\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\PoisonCogfly.exe"" ""%1"""; Check: IsAdminInstall
 [Run]
 Filename: "{app}\{#exe}"; Description: "{cm:LaunchProgram,{#StringChange(app, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
@@ -57,28 +57,4 @@ Filename: "{app}\{#exe}"; Description: "{cm:LaunchProgram,{#StringChange(app, '&
 function IsAdminInstall: Boolean;
 begin
   Result := IsAdminInstallMode;
-end;
-function PrepareToInstall(var NeedsRestart: Boolean): String;
-var
-  ProductCode: String;
-  ResultCode: Integer;
-begin
-  if RegKeyExists(
-      HKLM,
-      'Software\Microsoft\Windows\CurrentVersion\Uninstall\{5663C955-304C-31A7-AC38-758177E488E5}'
-    ) then
-  begin
-    if not ShellExec(
-      'runas',
-      'msiexec.exe',
-      '/x "{5663C955-304C-31A7-AC38-758177E488E5}" /qn /norestart',
-      '',
-      SW_HIDE,
-      ewWaitUntilTerminated,
-      ResultCode) then
-    begin
-      Result := 'Could not remove the previous installation.';
-      Exit;
-    end;
-  end;
 end;

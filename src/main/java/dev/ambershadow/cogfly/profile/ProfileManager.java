@@ -2,10 +2,11 @@ package dev.ambershadow.cogfly.profile;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
 import dev.ambershadow.cogfly.Cogfly;
 import dev.ambershadow.cogfly.asset.Assets;
 import dev.ambershadow.cogfly.elements.profiles.ProfilesScreenElement;
+import dev.ambershadow.cogfly.instance.GameInstance;
+import dev.ambershadow.cogfly.instance.InstanceManager;
 import dev.ambershadow.cogfly.loader.ModData;
 import dev.ambershadow.cogfly.util.GameUtils;
 import dev.ambershadow.cogfly.util.swing.FrameManager;
@@ -34,6 +35,10 @@ public class ProfileManager {
     public static Profile baseGame;
     public static final List<Profile> profiles = new ArrayList<>();
     public static void createProfile(String name, String iconPath) {
+        createProfile(name, iconPath, InstanceManager.getDefault());
+    }
+
+    public static void createProfile(String name, String iconPath, GameInstance instance) {
         Path profile = Paths.get(Cogfly.settings.profileSavePath).resolve(name);
         try {
             Files.createDirectories(profile);
@@ -58,6 +63,7 @@ public class ProfileManager {
                 throw new RuntimeException(e);
             }
         }
+        prof.setInstance(instance);
         profiles.add(prof);
         SwingUtilities.invokeLater(() -> {
             ProfilesScreenElement.queueRefresh();
@@ -143,7 +149,11 @@ public class ProfileManager {
                 Cogfly.logger.error("Failed to load profile {}", path.getFileName(), e);
             }
         }
-        baseGame = new Profile("Base Game", Paths.get(Cogfly.settings.gamePath), null, Assets.silksongIcon.getAsIcon());
+        GameInstance defaultInstance = InstanceManager.getDefault();
+        Path basePath = defaultInstance != null ? defaultInstance.getPath() : Paths.get(Cogfly.settings.gamePath);
+        baseGame = new Profile("Base Game", basePath, null, Assets.silksongIcon.getAsIcon());
+        baseGame.disablePersistence();
+        baseGame.bind(defaultInstance);
         baseGame.refreshMods();
     }
 
@@ -159,23 +169,20 @@ public class ProfileManager {
                 break;
             }
         }
-        Path data = path.resolve("cogfly_data.json");
-        String gamePath = "";
-        if (Files.exists(data)) {
-            try(JsonReader reader = new JsonReader(Files.newBufferedReader(data))) {
-                reader.beginObject();
-                if (reader.nextName().equals("gamePath")) {
-                    gamePath = reader.nextString();
-                }
-                reader.endObject();
-            } catch (IOException e) {
-                Cogfly.logger.error("Corrupt cogfly_data.json for profile {}", path.getFileName(), e);
+        ProfileMeta meta = ProfileMeta.read(path.resolve("cogfly_data.json"));
+        Profile profile = new Profile(path.getFileName().toString(), path.toAbsolutePath(), imagePath, icon);
+        if (meta.instanceId != null) {
+            profile.restore(InstanceManager.getById(meta.instanceId), meta);
+        } else {
+            // profile from before instances existed: pin it to the install it was using
+            GameInstance instance = meta.gamePath != null && !meta.gamePath.isBlank()
+                    ? InstanceManager.ensureExternal(meta.gamePath)
+                    : InstanceManager.getDefault();
+            if (instance != null) {
+                profile.setInstance(instance);
             }
         }
-        Profile profile = new Profile(path.getFileName().toString(), path.toAbsolutePath(), imagePath, icon);
-        if (!gamePath.isEmpty())
-            profile.setGamePath(Paths.get(gamePath).toString());
-        Cogfly.logger.info("Read path {} for profile {}.", profile.getGamePath(), profile.getName());
+        Cogfly.logger.info("Profile {} uses instance {}.", profile.getName(), profile.getInstanceId());
         return profile;
     }
 
@@ -246,9 +253,7 @@ public class ProfileManager {
                 (List<Map<String, Object>>) data.get("mods");
         List<ModData> outdatedMods = new ArrayList<>();
         Profile profile = new Profile(profileName, Paths.get(Cogfly.settings.profileSavePath + "/" + profileName));
-        String gamePath = "";
-        if (!cogflyData.isEmpty())
-            gamePath = JsonParser.parseString(cogflyData).getAsJsonObject().get("gamePath").getAsString();
+        ProfileMeta meta = ProfileMeta.parse(cogflyData.isEmpty() ? "{}" : cogflyData);
         FrameManager.getOrCreate().setPage(FrameManager.CogflyPage.PROFILES,
                 FrameManager.getOrCreate().profilesPageButton);
         if (Files.exists(profile.getPath())) {
@@ -262,16 +267,21 @@ public class ProfileManager {
             deleteFolder(Paths.get(Cogfly.settings.profileSavePath).resolve(profileName));
             loadProfiles();
         }
-        if (!gamePath.isEmpty())
-            profile.setGamePath(Paths.get(gamePath).toString());
         try {
             Files.createDirectories(profile.getPath());
-            if (!cogflyData.isEmpty())
-                Files.writeString(profile.getPath().resolve("cogfly_data.json"), cogflyData);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        profile.restore(resolveInstance(meta), meta);
+        profile.saveMeta();
         profiles.add(profile);
+        if (profile.isInstanceMissing()) {
+            String wanted = profile.getGameVersion() != null ? "version " + profile.getGameVersion() : "the game version it was made for";
+            JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame,
+                    "\"" + profile.getName() + "\" was made for " + wanted + ", which you don't have installed.\n"
+                            + "Install it from the Instances page or pick another instance for this profile before launching.",
+                    "Game version not installed", JOptionPane.WARNING_MESSAGE);
+        }
         GameUtils.downloadBepInEx(profile.getPath());
         mods.forEach(mod -> {
             String name = mod.get("name").toString();
@@ -306,6 +316,18 @@ public class ProfileManager {
             throw new RuntimeException(e);
         }
         outdated.accept(profile, outdatedMods.toArray(ModData[]::new));
+    }
+
+    /** Picks a local instance for an imported profile: same id, else same game version, else a legacy path. */
+    private static GameInstance resolveInstance(ProfileMeta meta) {
+        if (meta.isEmpty())
+            return InstanceManager.getDefault();
+        GameInstance instance = InstanceManager.getById(meta.instanceId);
+        if (instance == null || !instance.isAvailable())
+            instance = InstanceManager.findByVersion(meta.gameVersion);
+        if (instance == null && meta.gamePath != null && !meta.gamePath.isBlank())
+            instance = InstanceManager.ensureExternal(meta.gamePath);
+        return instance;
     }
 
     public static void toFile(Profile profile, Path path) {
@@ -389,14 +411,12 @@ public class ProfileManager {
             zos.write(b, 0, b.length);
             zos.closeEntry();
 
-            if (Files.exists(profile.getPath().resolve("cogfly_data.json"))) {
-                ZipEntry dat = new ZipEntry("cogfly_data.json");
-                zos.putNextEntry(dat);
-                byte[] a = Files.readAllBytes(profile.getPath().resolve("cogfly_data.json"));
-                zos.write(a, 0, a.length);
+            ProfileMeta exported = profile.toMeta();
+            if (!exported.isEmpty()) {
+                zos.putNextEntry(new ZipEntry("cogfly_data.json"));
+                zos.write(exported.toJson().getBytes(StandardCharsets.UTF_8));
                 zos.closeEntry();
             }
-
 
             if (Files.exists(profile.getBepInExPath().resolve("manual"))) {
                 zipFolder(profile.getBepInExPath().resolve("manual"), "manual", zos);

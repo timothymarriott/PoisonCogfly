@@ -2,6 +2,8 @@ package dev.ambershadow.cogfly.elements.profiles;
 
 import dev.ambershadow.cogfly.Cogfly;
 import dev.ambershadow.cogfly.elements.ModPanelElement;
+import dev.ambershadow.cogfly.elements.instances.InstancePicker;
+import dev.ambershadow.cogfly.instance.GameInstance;
 import dev.ambershadow.cogfly.loader.ModData;
 import dev.ambershadow.cogfly.profile.Profile;
 import dev.ambershadow.cogfly.profile.ProfileManager;
@@ -21,6 +23,8 @@ public class ProfileOpenPageCardElement extends JPanel {
     private final Profile profile;
     private final JButton updateAll;
     private final JProgressBar progressBar;
+    private final JLabel instanceLabel = new JLabel();
+    private final JButton changeInstance = new JButton("Change Instance");
     public void setBar(boolean val) {
         progressBar.setVisible(val);
         long total = ModUtils.getTotalDownloadCount(profile);
@@ -125,6 +129,10 @@ public class ProfileOpenPageCardElement extends JPanel {
 
         JButton copyLaunchArgs = new JButton("Copy Launch Arguments");
         copyLaunchArgs.addActionListener(_ -> {
+            if (profile.getGamePath() == null) {
+                JOptionPane.showMessageDialog(FrameManager.getOrCreate().frame, "This profile's game instance is not installed.", "Instance missing!", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             if (Cogfly.isWindows()) {
                 Cogfly.copyString("--doorstop-enabled true --doorstop-target-assembly \"" + profile.getBepInExPath().resolve("core", "BepInEx.Preloader.dll") + "\"");
             } else {
@@ -146,6 +154,12 @@ public class ProfileOpenPageCardElement extends JPanel {
         JLabel name = new JLabel(profile.getName());
         name.setFont(name.getFont().deriveFont(32f));
         b.add(name);
+        JPanel instancePanel = new JPanel();
+        changeInstance.setVisible(profile != ProfileManager.baseGame);
+        changeInstance.addActionListener(_ -> InstancePicker.changeInstance(profile, this::reload));
+        instancePanel.add(instanceLabel);
+        instancePanel.add(changeInstance);
+        updateInstanceLabel();
         JPanel panel = new JPanel();
         progressBar = new JProgressBar();
         progressBar.setVisible(false);
@@ -154,13 +168,27 @@ public class ProfileOpenPageCardElement extends JPanel {
         add(upperPanel);
         add(Box.createVerticalGlue());
         add(b);
+        add(instancePanel);
         add(Box.createVerticalGlue());
         add(panel);
         add(Box.createVerticalGlue());
         add(new ModPanelElement(profile, this));
     }
 
+    private void updateInstanceLabel() {
+        GameInstance instance = profile.getInstance();
+        if (profile.isInstanceMissing()) {
+            String wanted = profile.getGameVersion() != null ? " (version " + profile.getGameVersion() + ")" : "";
+            instanceLabel.setText("⚠ Game instance" + wanted + " is not installed. Change instance or install it on the Instances page.");
+            instanceLabel.setForeground(new Color(0xE0A030));
+        } else {
+            instanceLabel.setText("Game instance: " + instance.getDisplayName());
+            instanceLabel.setForeground(UIManager.getColor("Label.foreground"));
+        }
+    }
+
     public void reload() {
+        updateInstanceLabel();
         boolean anyOutdated = profile.getInstalledMods()
                 .stream().anyMatch(mod -> mod.isOutdated(profile));
         updateAll.setEnabled(anyOutdated);

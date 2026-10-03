@@ -1,12 +1,15 @@
-# Cogfly 
+# PoisonCogfly
 
-[![discord](https://img.shields.io/discord/879125729936298015?label=discord)](https://discord.gg/VDsg3HmWuB)
-[![GitHub all releases](https://img.shields.io/github/downloads/nix-main/Cogfly/total)](https://github.com/nix-main/Cogfly/releases)
+A personal fork of [Cogfly](https://github.com/Nix-main/Cogfly) by Nix/Ambershadow. This is not an official
+release and is not affiliated with the upstream project; please don't report issues with this fork upstream.
+
+> **AI disclosure:** The changes in this fork were written with the assistance of generative AI (Claude, by Anthropic).
 
 A cross-platform mod manager for [Hollow Knight: Silksong](https://hollowknightsilksong.com/). Currently only supports English.
 
 ## Usage
-- Download the latest version [here](https://ambershadow.dev/cogfly/download)
+- Download a build from the [CI workflow](https://github.com/timothymarriott/PoisonCogfly/actions) of this repository
+- If you have the original Cogfly installed, PoisonCogfly offers to copy its profiles, game versions and settings on first launch (your original data is left untouched)
 - Select game path if not automatically found
   - Xbox Games users will need to change their file type to "All Files" in the file dialog if the game is not automatically found
     - They must also select a **non-exe** file in their game folder to avoid file permission issues
@@ -20,18 +23,8 @@ A cross-platform mod manager for [Hollow Knight: Silksong](https://hollowknights
 - If you rely on Steam controller compatability or would like to keep your save files, you can either:
   - Launch with steam enabled
   - Set `Launch With Steam` in `Settings` to true
-- Linux users must have Zenity or Kdialog installed for file and folder pickers to work properly. Cogfly will fall back to manual input fields if neither is found.
+- Linux users must have Zenity or Kdialog installed for file and folder pickers to work properly. PoisonCogfly will fall back to manual input fields if neither is found.
 
-
-## Contributions & Bug Reports
-Contributions can be submitted here:    
-https://github.com/nix-main/Cogfly/pulls    
-All contributions must be written in either Java or Kotlin, as Cogfly is a Java program. It's preferred that pull requests do not add additional libraries/dependencies, but doing so does not immediately disqualify them.\
-Please disclose usage of generative ai in pull requests.
-
-Bug reports can be submitted here:  
-https://github.com/nix-main/Cogfly/issues   
-Please submit actual information about the bug experienced. Please also submit your log file. There is an "Open Logs Folder" button on the info page.
 
 ## Building
 If you're just looking for a jar file, it can be found in the release artifacts.
@@ -47,28 +40,12 @@ __To build a cross-platform jar that works on Windows, you'll need a Windows cro
 
 The output will be in __/build/libs__
 
-## Repositories
-### Debian-based/apt:
-```shell
-curl -fsSL https://apt.ambershadow.dev/repo.gpg -o cogfly.gpg
-curl -fsSL https://apt.ambershadow.dev/cogfly.sources -o cogfly.sources
-sudo install -Dm644 cogfly.sources /etc/apt/sources.list.d/cogfly.sources
-sudo install -Dm644 cogfly.gpg /usr/share/keyrings/cogfly.gpg
-```
-
-### RPM/yum:
-```shell
-curl -fsSL https://rpm.ambershadow.dev/cogfly.repo -o cogfly.repo
-sudo install -Dm644 cogfly.repo /etc/yum.repos.d/cogfly.repo
-```
-
 <details>
 <summary><h3>Credits</h3></summary>
 
-Nix herself very likely did anything not listed here.
+This fork builds on [Cogfly](https://github.com/Nix-main/Cogfly). Nix (Ambershadow) very likely did anything not listed here,
+and the contributors below worked on the upstream project.
 
-- Art
-    - [Jngo](https://github.com/jngo102) - Main icon on the info 
 - Reese
     - [Slaurent](https://github.com/slaurent22) - Pictures of his lovely cat 
 - Contributions
@@ -90,3 +67,11 @@ Nix herself very likely did anything not listed here.
       - Fixed an issue where profiles could be created before BepInEx was available
       - Cleaned up some swing UI behavior
 </details>
+
+## License
+PoisonCogfly is licensed under the [GNU GPL v3](LICENSE). The bundled downloader in `tools/` is built on a modified
+copy of [DepotDownloader](https://github.com/SteamRE/DepotDownloader), which is licensed under GPL-2.0 only;
+see [tools/README.md](tools/README.md) and [tools/DepotDownloader/NOTICE.md](tools/DepotDownloader/NOTICE.md).
+
+## Logo
+The Poison Cogfly artwork is © Team Cherry and is used here as fan art; it is not covered by this project's license.
