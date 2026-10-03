@@ -3,6 +3,8 @@
 A personal fork of [Cogfly](https://github.com/Nix-main/Cogfly) by Nix/Ambershadow. This is not an official
 release and is not affiliated with the upstream project; please don't report issues with this fork upstream.
 
+It is made to fit my needs and is only tested for my use cases, so it may not work well for yours.
+
 > **AI disclosure:** The changes in this fork were written with the assistance of generative AI (Claude, by Anthropic).
 
 A cross-platform mod manager for [Hollow Knight: Silksong](https://hollowknightsilksong.com/). Currently only supports English.
